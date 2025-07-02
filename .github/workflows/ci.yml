@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install dependencies
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --with dev
+
+    - name: Run linting
+      run: |
+        poetry run flake8 agent_app/ pdf_service/ empi_mock/ tests/
+        poetry run black --check agent_app/ pdf_service/ empi_mock/ tests/
+
+    - name: Run unit tests
+      run: poetry run pytest tests/ -v --cov=agent_app --cov=pdf_service --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build PDF service
+      run: docker build -t referral-router/pdf-service ./pdf_service
+
+    - name: Build EMPI mock service
+      run: docker build -t referral-router/empi-mock ./empi_mock
+
+    - name: Build agent application
+      run: docker build -t referral-router/agent ./agent_app
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    needs: [test, docker-build]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Install dependencies
+      run: poetry install --with dev
+
+    - name: Start services
+      run: |
+        docker-compose up -d
+        # Wait for services to be ready
+        timeout 60 bash -c 'until curl -f http://localhost:8080/fhir/metadata; do sleep 2; done'
+        timeout 60 bash -c 'until curl -f http://localhost:7000/health; do sleep 2; done'
+        timeout 60 bash -c 'until curl -f http://localhost:7001/health; do sleep 2; done'
+
+    - name: Run end-to-end tests
+      run: poetry run pytest tests/e2e/ -v
+
+    - name: Cleanup
+      if: always()
+      run: docker-compose down 

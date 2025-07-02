@@ -1,0 +1,17 @@
+- id: local_fhir
+  desc: Local HAPI-FHIR server
+  endpoint: http://localhost:8080/fhir
+  capability: [fhir_read, fhir_write, validate]
+  auth: none
+
+- id: pdf_extract
+  desc: Extracts structured JSON from referral PDFs
+  endpoint: http://pdfsvc:7000/extract
+  capability: [pdf_to_json]
+  auth: none
+
+- id: empi_mock
+  desc: Dummy patient lookup
+  endpoint: http://empi:7001/patient
+  capability: [demographics_lookup]
+  auth: none 

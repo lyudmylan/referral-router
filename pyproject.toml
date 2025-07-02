@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "referral-router"
+version = "0.1.0"
+description = "Automate referral document hand-off between healthcare systems using FHIR"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "agent_app"}, {include = "pdf_service"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+langgraph = "^0.5.0"
+openai = "^1.30.0"
+fhirclient = "^4.2.0"
+pdfplumber = "^0.10.0"
+llama-index = "^0.10.0"
+fastapi = "^0.104.0"
+uvicorn = "^0.24.0"
+sqlite-utils = "^3.35.0"
+pydantic = "^2.5.0"
+pyyaml = "^6.0.1"
+httpx = "^0.25.0"
+click = "^8.1.0"
+python-dotenv = "^1.1.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+pytest-cov = "^4.1.0"
+black = "^23.0.0"
+flake8 = "^6.0.0"
+mypy = "^1.7.0"
+
+[tool.poetry.scripts]
+router = "router:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true 

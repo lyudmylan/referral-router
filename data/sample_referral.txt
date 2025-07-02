@@ -1,0 +1,55 @@
+REFERRAL DOCUMENT
+
+Patient Information:
+Name: John Doe
+Date of Birth: 1985-03-15
+Gender: Male
+Email: john.doe@email.com
+Phone: +1-555-0123
+
+Referring Provider:
+Dr. Jane Smith, MD
+Family Medicine
+123 Medical Center Dr
+Anytown, CA 90210
+
+Referred To:
+Dr. Michael Johnson, MD
+Cardiology Department
+456 Heart Center Blvd
+Somewhere, NY 10001
+
+Reason for Referral:
+Patient presents with chest pain and shortness of breath. 
+ECG shows ST-segment elevation. Suspected acute coronary syndrome.
+Requires immediate cardiology consultation and possible cardiac catheterization.
+
+Clinical History:
+- Hypertension (diagnosed 2018)
+- Type 2 Diabetes (diagnosed 2020)
+- Family history of heart disease
+- Current medications: Metformin, Lisinopril
+
+Physical Examination:
+- Blood Pressure: 160/95 mmHg
+- Heart Rate: 95 bpm
+- Respiratory Rate: 22/min
+- Oxygen Saturation: 94% on room air
+
+Diagnostic Tests:
+- ECG: ST-segment elevation in leads II, III, aVF
+- Troponin I: 2.5 ng/mL (elevated)
+- Chest X-ray: Normal cardiac silhouette
+
+Requested Services:
+1. Cardiology consultation
+2. Cardiac catheterization
+3. Echocardiogram
+4. Stress test (if indicated)
+
+Priority: URGENT
+Insurance: Blue Cross Blue Shield
+Policy Number: BCBS123456789
+
+Date: 2025-01-15
+Signature: Dr. Jane Smith, MD 
