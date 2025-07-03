@@ -35,6 +35,38 @@ async def generator(state: AgentState) -> AgentState:
         pdf_content = state["pdf_data"]["data"]["text_content"]
         empi_info = state.get("empi_data", {})
         
+        # Get a real patient ID from the FHIR server
+        real_patient_id = None
+        try:
+            fhir_tools_instance = FHIRTools()
+            patients_response = await fhir_tools_instance.client.get(f"{fhir_tools_instance.base_url}/Patient?_count=1")
+            if patients_response.status_code == 200:
+                patients_data = patients_response.json()
+                if patients_data.get("entry") and len(patients_data["entry"]) > 0:
+                    real_patient_id = patients_data["entry"][0]["resource"]["id"]
+                    # Update empi_info with real patient ID
+                    empi_info["id"] = real_patient_id
+                    empi_info["reference"] = f"Patient/{real_patient_id}"
+        except Exception as e:
+            logger.warning(f"Could not get real patient ID: {e}")
+        
+        if not real_patient_id:
+            raise ValueError("No patients found in FHIR server. Please ensure patients are loaded before processing referrals.")
+        
+        # Get a real practitioner ID from the FHIR server
+        real_practitioner_id = None
+        try:
+            practitioners_response = await fhir_tools_instance.client.get(f"{fhir_tools_instance.base_url}/Practitioner?_count=1")
+            if practitioners_response.status_code == 200:
+                practitioners_data = practitioners_response.json()
+                if practitioners_data.get("entry") and len(practitioners_data["entry"]) > 0:
+                    real_practitioner_id = practitioners_data["entry"][0]["resource"]["id"]
+        except Exception as e:
+            logger.warning(f"Could not get real practitioner ID: {e}")
+        
+        if not real_practitioner_id:
+            raise ValueError("No practitioners found in FHIR server. Please ensure practitioners are loaded before processing referrals.")
+        
         # Create prompt for LLM
         prompt = f"""
 You are a healthcare data specialist. Convert the following referral document into a FHIR R5 ServiceRequest resource.
@@ -42,19 +74,21 @@ You are a healthcare data specialist. Convert the following referral document in
 PDF Content:
 {pdf_content}
 
-Patient Information (if available):
+Patient Information (use this patient reference):
 {json.dumps(empi_info, indent=2)}
 
 Create a valid FHIR R5 ServiceRequest JSON object. Include:
 - resourceType: "ServiceRequest"
 - status: "active" or "draft"
 - intent: "order"
-- subject: Reference to the patient
+- subject: Reference to the patient (use "Patient/{real_patient_id}")
 - code: SNOMED CT code for the requested service
 - priority: "routine", "urgent", or "asap"
 - reasonCode: SNOMED CT code for the reason
-- requester: Reference to the requesting practitioner
-- encounter: Reference to the encounter (if applicable)
+- requester: Reference to the requesting practitioner (use "Practitioner/{real_practitioner_id}")
+- encounter: Only include if you have a valid encounter reference, otherwise omit this field
+
+IMPORTANT: Do not include encounter references unless you have a valid encounter ID. If no encounter is mentioned in the referral, omit the encounter field entirely.
 
 Return ONLY the JSON object, no additional text.
 """
@@ -116,7 +150,11 @@ async def validator(state: AgentState) -> AgentState:
             success=validation_result.get("valid", False)
         )
         
-        return {**state, "validation_result": validation_result}
+        # If validation succeeds, set final_json
+        if validation_result.get("valid", False):
+            return {**state, "validation_result": validation_result, "final_json": draft_json}
+        else:
+            return {**state, "validation_result": validation_result}
         
     except Exception as e:
         logger.error(f"Validator failed: {e}")

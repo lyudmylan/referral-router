@@ -27,21 +27,7 @@ class FHIRTools:
             Dict with 'valid' boolean and 'errors' list if any
         """
         try:
-            # First try to parse with fhirclient
-            try:
-                if resource_json.get("resourceType") == "ServiceRequest":
-                    # Create a mock client for validation
-                    mock_client = client.FHIRClient(settings=None)
-                    # Try to create a ServiceRequest object
-                    service_request = servicerequest.ServiceRequest(resource_json)
-                    # If we get here, validation passed
-                    logger.info("FHIR validation passed")
-                else:
-                    return {"valid": False, "errors": ["Only ServiceRequest resources supported"]}
-            except Exception as e:
-                return {"valid": False, "errors": [f"FHIR validation failed: {str(e)}"]}
-            
-            # Now validate with FHIR server
+            # Validate with FHIR server
             url = f"{self.base_url}/ServiceRequest/$validate"
             response = await self.client.post(
                 url,

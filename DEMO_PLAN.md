@@ -47,7 +47,24 @@ curl http://localhost:7002/health         # EMPI Service
 - Health endpoints should return 200 OK
 - PDF service on port 7001 (not 7000 due to macOS AirPlay conflict)
 
-### Step 2: Test PDF Extraction Service
+### Step 2: Load Synthea Test Data
+```bash
+# Load synthetic patient and practitioner data
+./scripts/load_synthea.sh
+
+# Verify data was loaded
+curl http://localhost:8080/fhir/Patient?_count=5 | jq '.entry[]?.resource.id'
+curl http://localhost:8080/fhir/Practitioner?_count=5 | jq '.entry[]?.resource.id'
+```
+
+**Expected Output:**
+- Patient IDs: ["138", "250", "602", ...]
+- Practitioner IDs: ["126", "128", "130", ...]
+- No errors in loading process
+
+**Note:** This step is crucial for the referral router to work properly, as it needs real patient and practitioner references in the FHIR server.
+
+### Step 3: Test PDF Extraction Service
 ```bash
 # Test PDF extraction with sample file
 curl -X POST http://localhost:7001/extract \
@@ -58,7 +75,7 @@ curl -X POST http://localhost:7001/extract \
 - HTTP 200 response
 - JSON with extracted text content
 
-### Step 3: Test EMPI Service
+### Step 4: Test EMPI Service
 ```bash
 # Test patient lookup
 curl "http://localhost:7002/patient?email=john.doe@email.com"
@@ -68,7 +85,7 @@ curl "http://localhost:7002/patient?email=john.doe@email.com"
 - HTTP 200 response
 - JSON with patient information
 
-### Step 4: Run Complete Demo
+### Step 5: Run Complete Demo
 ```bash
 # Process sample referral
 poetry run python router.py data/sample_referral.pdf
@@ -103,7 +120,7 @@ poetry run python router.py data/sample_referral.pdf
 }
 ```
 
-### Step 5: Verify FHIR Store
+### Step 6: Verify FHIR Store
 ```bash
 # Check if ServiceRequest was posted (if successful)
 curl http://localhost:8080/fhir/ServiceRequest
@@ -148,6 +165,26 @@ docker-compose down && docker-compose up -d
 ```bash
 docker ps | grep pdfsvc
 curl http://localhost:7001/health
+```
+
+#### 6. No Patients/Practitioners Found
+**Problem:** `No patients found in FHIR server. Please ensure patients are loaded before processing referrals.`
+**Solution:** Load Synthea test data
+```bash
+./scripts/load_synthea.sh
+curl http://localhost:8080/fhir/Patient?_count=1  # Verify patients exist
+```
+
+#### 7. Java Version Issues (Synthea)
+**Problem:** `java.lang.UnsupportedClassVersionError: Unsupported major.minor version`
+**Solution:** Update Java to version 11+
+```bash
+# macOS
+brew install openjdk@11
+export JAVA_HOME=/opt/homebrew/opt/openjdk@11
+
+# Linux
+sudo apt-get install openjdk-11-jdk
 ```
 
 ### Service Status Commands
