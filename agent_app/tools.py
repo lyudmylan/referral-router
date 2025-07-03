@@ -196,7 +196,7 @@ class PDFExtractor:
 class EMPILookup:
     """Tool for patient lookup via EMPI"""
     
-    def __init__(self, service_url: str = "http://empi:7001"):
+    def __init__(self, service_url: str = "http://localhost:7002"):
         self.service_url = service_url
         self.client = httpx.AsyncClient(timeout=30.0)
     

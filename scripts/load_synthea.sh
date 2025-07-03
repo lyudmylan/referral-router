@@ -52,34 +52,70 @@ echo "✅ Patient generation complete"
 # Load patients into FHIR server
 echo "📤 Loading patients into FHIR server..."
 
-# Find the transaction bundle file
-BUNDLE_FILE=$(find ./data/synthea -name "*.json" | head -1)
+# Load hospital information first
+echo "🏥 Loading hospital information..."
+HOSPITAL_FILES=$(find ./data/synthea/fhir -name "hospitalInformation*.json")
+for hospital_file in $HOSPITAL_FILES; do
+    echo "📄 Loading hospital: $hospital_file"
+    RESPONSE=$(curl -s -w "%{http_code}" -X POST \
+        -H "Content-Type: application/fhir+json" \
+        -d @"$hospital_file" \
+        "$FHIR_BASE_URL")
+    
+    HTTP_CODE="${RESPONSE: -3}"
+    if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+        echo "✅ Hospital loaded successfully"
+    else
+        echo "⚠️  Hospital load returned HTTP $HTTP_CODE (may already exist)"
+    fi
+done
 
-if [ -z "$BUNDLE_FILE" ]; then
-    echo "❌ Error: No transaction bundle found"
+# Load practitioner information
+echo "👨‍⚕️ Loading practitioner information..."
+PRACTITIONER_FILES=$(find ./data/synthea/fhir -name "practitionerInformation*.json")
+for practitioner_file in $PRACTITIONER_FILES; do
+    echo "📄 Loading practitioner: $practitioner_file"
+    RESPONSE=$(curl -s -w "%{http_code}" -X POST \
+        -H "Content-Type: application/fhir+json" \
+        -d @"$practitioner_file" \
+        "$FHIR_BASE_URL")
+    
+    HTTP_CODE="${RESPONSE: -3}"
+    if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+        echo "✅ Practitioner loaded successfully"
+    else
+        echo "⚠️  Practitioner load returned HTTP $HTTP_CODE (may already exist)"
+    fi
+done
+
+# Find and load patient bundles
+echo "👥 Loading patient bundles..."
+PATIENT_FILES=$(find ./data/synthea/fhir -name "*_*.json" | grep -v "hospitalInformation" | grep -v "practitionerInformation")
+
+if [ -z "$PATIENT_FILES" ]; then
+    echo "❌ Error: No patient bundles found"
+    echo "🔍 Checking available files:"
+    find ./data/synthea/fhir -name "*.json" | head -5
     exit 1
 fi
 
-echo "📄 Using bundle file: $BUNDLE_FILE"
-
-# Post the transaction bundle
-echo "🚀 Posting transaction bundle..."
-RESPONSE=$(curl -s -w "%{http_code}" -X POST \
-    -H "Content-Type: application/fhir+json" \
-    -d @"$BUNDLE_FILE" \
-    "$FHIR_BASE_URL")
-
-HTTP_CODE="${RESPONSE: -3}"
-RESPONSE_BODY="${RESPONSE%???}"
-
-if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
-    echo "✅ Successfully loaded patients into FHIR server"
-    echo "📊 Response: $RESPONSE_BODY"
-else
-    echo "❌ Error loading patients: HTTP $HTTP_CODE"
-    echo "📄 Response: $RESPONSE_BODY"
-    exit 1
-fi
+for patient_file in $PATIENT_FILES; do
+    echo "📄 Loading patient: $patient_file"
+    RESPONSE=$(curl -s -w "%{http_code}" -X POST \
+        -H "Content-Type: application/fhir+json" \
+        -d @"$patient_file" \
+        "$FHIR_BASE_URL")
+    
+    HTTP_CODE="${RESPONSE: -3}"
+    RESPONSE_BODY="${RESPONSE%???}"
+    
+    if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+        echo "✅ Patient loaded successfully"
+    else
+        echo "❌ Error loading patient: HTTP $HTTP_CODE"
+        echo "📄 Response: $RESPONSE_BODY"
+    fi
+done
 
 echo ""
 echo "🎉 Patient loading complete!"
